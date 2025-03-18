@@ -1,0 +1,14 @@
+{
+    "Llave":[
+        {"pieza":"1000","imagen":"img/img_piezas_ini/Pieza_1000.jpeg"},
+        {"pieza":"1001","imagen":"img/img_piezas_ini/Pieza_1001.jpeg"},
+        {"pieza":"1002","imagen":"img/img_piezas_ini/Pieza_1002.jpeg"},
+        {"pieza":"1003","imagen":"img/img_piezas_ini/Pieza_1003.jpeg"},
+        {"pieza":"0100","imagen":"img/img_piezas_ter/Pieza_0100.jpeg"},
+        {"pieza":"0101","imagen":"img/img_piezas_ter/Pieza_0101.jpeg"},
+        {"pieza":"0102","imagen":"img/img_piezas_ter/Pieza_0102.jpeg"},
+        {"pieza":"cons_0100","imagen":"img/img_piezas_cons/Cons_Pieza_0100.jpeg"},
+        {"pieza":"cons_0101","imagen":"img/img_piezas_cons/Cons_Pieza_0101.jpeg"},
+        {"pieza":"cons_0102","imagen":"img/img_piezas_cons/Cons_Pieza_0102.jpeg"}
+    ]    
+}
