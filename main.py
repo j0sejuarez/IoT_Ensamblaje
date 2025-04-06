@@ -50,7 +50,8 @@ class Aplicacion(tk.Tk):
         super().__init__()
         self.title("Selecciona un Objeto")
         self.geometry("300x200")
-
+        label_ip = tk.Label(self, text="Direccion IP:", font=("Arial", 12)).pack()
+        combo_box = ttk.Combobox(self, values=["192.168.1.111", "192.168.1.112", "192.168.1.114"]).pack()
         tk.Label(self, text="Elige un objeto:", font=("Arial", 12)).pack(pady=10)
 
         for objeto in objetos.keys():
@@ -58,6 +59,11 @@ class Aplicacion(tk.Tk):
 
     def abrir_ventana(self, objeto):
         VentanaConstruccion(self, objeto, objetos[objeto])
+
+    def selec_ip(self,evento):
+        ip_select = combo_box.get()
+        label_ip.config(text="Selected Item: " + ip_select)
+
 
 if __name__ == "__main__":
     app = Aplicacion()
