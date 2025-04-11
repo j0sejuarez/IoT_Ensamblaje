@@ -64,7 +64,6 @@ class Aplicacion(tk.Tk):
         ip_select = combo_box.get()
         label_ip.config(text="Selected Item: " + ip_select)
 
-
 if __name__ == "__main__":
     app = Aplicacion()
     app.mainloop()
