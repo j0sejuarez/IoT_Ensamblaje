@@ -9,6 +9,9 @@
         {"pieza":"0102","imagen":"img/img_piezas_ter/Pieza_0102.jpeg"},
         {"pieza":"cons_0100","imagen":"img/img_piezas_cons/Cons_Pieza_0100.jpeg"},
         {"pieza":"cons_0101","imagen":"img/img_piezas_cons/Cons_Pieza_0101.jpeg"},
-        {"pieza":"cons_0102","imagen":"img/img_piezas_cons/Cons_Pieza_0102.jpeg"}
+        {"pieza":"cons_0102","imagen":"img/img_piezas_cons/Cons_Pieza_0102.jpeg"},
+        {"pieza":"ter_0100","imagen":"img/img_piezas_ter/Pieza_ter_0100.jpeg"},
+        {"pieza":"ter_0101","imagen":"img/img_piezas_ter/Pieza_ter_0101.jpeg"},
+        {"pieza":"ter_0102","imagen":"img/img_piezas_ter/Pieza_ter_0102.jpeg"}
     ]    
 }
