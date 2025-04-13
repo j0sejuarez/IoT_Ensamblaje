@@ -29,7 +29,7 @@ class Aplicacion(tk.Tk):
             estado = "disponible"  # o cargarlo desde otro JSON si lo tienes
             card = ObjetoCard(cards_frame, objeto_id, pasos, estado, on_armar=self.abrir_ventana)
             card.grid(row=0, column=col, padx=15, pady=10)
-            col += 1
+        col += 1
 
     def abrir_ventana(self, objeto):
         VentanaConstruccion(self, objeto, objetos[objeto])
