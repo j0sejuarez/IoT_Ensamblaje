@@ -6,15 +6,18 @@ import time
 from tkinter import messagebox
 
 class VentanaConstruccion(tk.Toplevel):
-    def __init__(self, master, objeto, pasos, puerto_serial="COM5", baudrate=115200):
+    def __init__(self, master, objeto, pasos, puerto_serial="COM3", baudrate=115200):
         super().__init__(master)
         self.title(f"Construcción del {objeto}")
         self.geometry("900x500")
         self.configure(bg="#1e1e1e")
 
+        self.objeto = objeto
         self.pasos = pasos
         self.paso_actual = 0
+        self.codigo_esperado = None
 
+        # Intentar conectar al puerto serial
         try:
             self.serial = serial.Serial(puerto_serial, baudrate, timeout=1)
             time.sleep(2)
@@ -34,6 +37,7 @@ class VentanaConstruccion(tk.Toplevel):
         tk.Label(header, text=f"Construcción del {objeto}", fg="white",
                  bg="black", font=("Arial", 12, "bold")).pack(side=tk.LEFT)
 
+        # Paneles principales
         self.main_frame = tk.Frame(self, bg="#d9d9d9")
         self.main_frame.pack(expand=True, fill=tk.BOTH, padx=20, pady=20)
 
@@ -58,8 +62,12 @@ class VentanaConstruccion(tk.Toplevel):
         self.destroy()
 
     def cargar_imagen(self, ruta, tamaño=(100, 100)):
-        img = Image.open(ruta).resize(tamaño)
-        return ImageTk.PhotoImage(img)
+        try:
+            img = Image.open(ruta).resize(tamaño)
+            return ImageTk.PhotoImage(img)
+        except Exception as e:
+            print(f"Error al cargar imagen {ruta}: {e}")
+            return None
 
     def mostrar_paso(self):
         for widget in self.left_panel.winfo_children():
@@ -78,26 +86,54 @@ class VentanaConstruccion(tk.Toplevel):
                 card.pack(pady=10)
                 tk.Label(card, text=f"Pieza: {pieza['pieza']}", font=("Arial", 10), bg="white").pack()
                 img = self.cargar_imagen(pieza["imagen"], (80, 80))
-                label = tk.Label(card, image=img, bg="white")
-                label.image = img
-                label.pack()
+                if img:
+                    label = tk.Label(card, image=img, bg="white")
+                    label.image = img
+                    label.pack()
 
             self.lbl_info.config(text=f"Ensamblando: {paso['cons']['pieza']}")
             img = self.cargar_imagen(paso["cons"]["imagen"], (200, 200))
-            self.img_label.config(image=img)
-            self.img_label.image = img
+            if img:
+                self.img_label.config(image=img)
+                self.img_label.image = img
 
             self.codigo_esperado = paso["p1"]["codigo"]
-            self.serial.write((self.codigo_esperado + "\n").encode())
+
+            if self.codigo_esperado.startswith("0"):
+                self.after(10000, self.avanzar_paso)
+            else:
+                self.serial.write((self.codigo_esperado + "\n").encode())
+
 
         elif paso["tipo"] == "resultado":
             self.lbl_info.config(text=f"Pieza final: {paso['pieza']['pieza']}")
+    
+            card = tk.Frame(self.left_panel, bg="white", padx=5, pady=5)
+            card.pack(pady=10)
+            tk.Label(card, text=f"Pieza Final: {paso['pieza']['pieza']}", font=("Arial", 10), bg="white").pack()
+            img = self.cargar_imagen(paso["pieza"]["imagen"], (80, 80))
+            label = tk.Label(card, image=img, bg="white")
+            label.image = img
+            label.pack()
+
+            # Mostrar también en el panel derecho como ensamblaje completado
+            self.lbl_info.config(text=f"✅ Objeto completado: {paso['pieza']['pieza']}")
             img = self.cargar_imagen(paso["pieza"]["imagen"], (200, 200))
             self.img_label.config(image=img)
             self.img_label.image = img
 
             self.codigo_esperado = paso["pieza"]["codigo"]
-            self.serial.write((self.codigo_esperado + "\n").encode())
+
+            if self.codigo_esperado.startswith("ter"):
+                # No se envía por serial, se espera 10 segundos y se avanza
+                self.after(10000, self.avanzar_paso)
+            else:
+                self.serial.write((self.codigo_esperado + "\n").encode())
+
+    def avanzar_paso(self):
+        self.paso_actual += 1
+        self.mostrar_paso()
+
 
     def escuchar_serial(self):
         while self.escuchando:

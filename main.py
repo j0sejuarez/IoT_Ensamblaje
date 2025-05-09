@@ -31,8 +31,9 @@ class Aplicacion(tk.Tk):
             card.grid(row=0, column=col, padx=15, pady=10)
         col += 1
 
-    def abrir_ventana(self, objeto):
-        VentanaConstruccion(self, objeto, objetos[objeto])
+    def abrir_ventana(self, objeto_id):
+        pasos = objetos[objeto_id]
+        VentanaConstruccion(self, objeto_id, pasos)
 
     def selec_ip(self,evento):
         ip_select = combo_box.get()
