@@ -6,12 +6,12 @@ import time
 from tkinter import messagebox
 
 class VentanaConstruccion(tk.Toplevel):
-    def __init__(self, master, objeto, pasos, puerto_serial="COM3", baudrate=115200):
+    def __init__(self, master, objeto, pasos, puerto_serial="COM5", baudrate=115200):
         super().__init__(master)
         self.title(f"Construcción del {objeto}")
         self.geometry("900x500")
         self.configure(bg="#1e1e1e")
-
+        self.piezas_presionadas = []
         self.objeto = objeto
         self.pasos = pasos
         self.paso_actual = 0
@@ -49,6 +49,9 @@ class VentanaConstruccion(tk.Toplevel):
 
         self.lbl_info = tk.Label(self.right_panel, text="", font=("Arial", 12), bg="white")
         self.lbl_info.pack(pady=10)
+
+        self.lbl_estado = tk.Label(self.right_panel, text="", font=("Arial", 10), bg="white", fg="blue")
+        self.lbl_estado.pack(pady=5)
 
         self.img_label = tk.Label(self.right_panel, bg="white")
         self.img_label.pack()
@@ -100,14 +103,16 @@ class VentanaConstruccion(tk.Toplevel):
             self.codigo_esperado = paso["p1"]["codigo"]
 
             if self.codigo_esperado.startswith("0"):
+                # Esperar 10 segundos para avanzar automáticamente
                 self.after(10000, self.avanzar_paso)
             else:
+                # Enviar código por serial
                 self.serial.write((self.codigo_esperado + "\n").encode())
 
-
         elif paso["tipo"] == "resultado":
+            # Aquí solo avanzamos automáticamente después de 10 segundos
             self.lbl_info.config(text=f"Pieza final: {paso['pieza']['pieza']}")
-    
+
             card = tk.Frame(self.left_panel, bg="white", padx=5, pady=5)
             card.pack(pady=10)
             tk.Label(card, text=f"Pieza Final: {paso['pieza']['pieza']}", font=("Arial", 10), bg="white").pack()
@@ -124,14 +129,12 @@ class VentanaConstruccion(tk.Toplevel):
 
             self.codigo_esperado = paso["pieza"]["codigo"]
 
-            if self.codigo_esperado.startswith("ter"):
-                # No se envía por serial, se espera 10 segundos y se avanza
-                self.after(10000, self.avanzar_paso)
-            else:
-                self.serial.write((self.codigo_esperado + "\n").encode())
+            # Esperar 10 segundos para avanzar sin necesidad de interacción
+            self.after(5000, self.avanzar_paso)
 
     def avanzar_paso(self):
         self.paso_actual += 1
+        self.lbl_estado.config(text="")  # Limpiar el estado antes de avanzar
         self.mostrar_paso()
 
 
@@ -144,15 +147,50 @@ class VentanaConstruccion(tk.Toplevel):
                         self.after(0, self.validar_boton, linea)
                 time.sleep(0.1)
             except Exception as e:
-                print("Error al leer Serial:", e)
+                print(f"Error al leer del puerto serial: {e}")
+                self.escuchando = False
                 break
 
-    def validar_boton(self, pieza_recibida):
-        if self.paso_actual >= len(self.pasos):
-            return
+    def validar_boton(self, codigo):
+        self.lbl_estado.config(text=f"Código recibido: {codigo}", fg="blue")
+        print(f"Código recibido: {codigo}")
 
-        if pieza_recibida == self.codigo_esperado:
-            self.paso_actual += 1
-            self.mostrar_paso()
+        paso_actual = self.pasos[self.paso_actual]
+
+        if paso_actual["tipo"] == "construccion":
+            if self.paso_actual == 0:
+                piezas_necesarias = {paso_actual["p1"]["codigo"], paso_actual["p2"]["codigo"]}
+                if codigo in piezas_necesarias and codigo not in self.piezas_presionadas:
+                    self.piezas_presionadas.append(codigo)
+                    print(f"Pieza {codigo} registrada.")
+                    self.lbl_estado.config(text=f"Pieza {codigo} registrada.", fg="green")
+
+                    if len(self.piezas_presionadas) == 2:
+                        print("Primeras dos piezas correctas.")
+                        self.piezas_presionadas.clear()
+                        self.after(5000,self.avanzar_paso)
+                else:
+                    print("Pieza no válida o ya registrada.")
+                    self.lbl_estado.config(text="Pieza inválida o duplicada.", fg="red")
+
+            else:
+                if codigo == self.codigo_esperado:
+                    print("Pieza correcta.")
+                    self.lbl_estado.config(text="Pieza correcta.", fg="green")
+                    self.after(5000, self.avanzar_paso)
+                else:
+                    print("Pieza no válida o ya registrada.")
+                    self.lbl_estado.config(text="Pieza inválida", fg="red")
+
+        elif paso_actual["tipo"] == "resultado":
+            if codigo == self.codigo_esperado:
+                print("Resultado correcto.")
+                self.lbl_estado.config(text="Resultado correcto.", fg="green")
+                self.after(5000, self.avanzar_paso)
+
+            else:
+                print("Resultado incorrecto.")
+                self.lbl_estado.config(text="Resultado incorrecto.", fg="red")
         else:
-            messagebox.showwarning("Error", f"Pieza incorrecta: {pieza_recibida}. Esperada: {self.codigo_esperado}")
+            print("Resultado incorrecto.")
+            self.lbl_estado.config(text="Resultado incorrecto.", fg="red")
