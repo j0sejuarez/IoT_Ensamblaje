@@ -6,15 +6,16 @@ import time
 from tkinter import messagebox
 
 class VentanaConstruccion(tk.Toplevel):
-    def __init__(self, master, objeto, pasos, puerto_serial="COM3", baudrate=115200):
+    def __init__(self, master, objeto, pasos, puerto_serial="COM5", baudrate=115200):
         super().__init__(master)
         self.title(f"Construcción del {objeto}")
         self.state("zoomed")
         self.configure(bg="#1e1e1e")
         self.objeto = objeto
         self.pasos = pasos
+        self.piezas_presionadas = []
         self.paso_actual = 0
-        self.codigo_esperado = ""
+        self.codigo_esperado = None
 
         try:
             self.serial = serial.Serial(puerto_serial, baudrate, timeout=1)
@@ -69,14 +70,6 @@ class VentanaConstruccion(tk.Toplevel):
             print(f"Error al cargar imagen {ruta}: {e}")
             return None
 
-    def enviar_led(self, numero):
-        try:
-            comando = f"L{numero}\n"
-            self.serial.write(comando.encode())
-            print(f"Enviando al ESP32: {comando.strip()}")
-        except Exception as e:
-            print(f"Error al enviar comando LED: {e}")
-
     def mostrar_paso(self):
         for widget in self.left_panel.winfo_children():
             widget.destroy()
@@ -84,11 +77,9 @@ class VentanaConstruccion(tk.Toplevel):
         if self.paso_actual >= len(self.pasos):
             self.lbl_info.config(text="✅ Objeto completado")
             self.img_label.config(image="")
-            self.enviar_led("4")  # LED 4 indica finalización
             return
 
         paso = self.pasos[self.paso_actual]
-        self.enviar_led(self.paso_actual + 1 if self.paso_actual < 4 else 1)
 
         if paso["tipo"] == "construccion":
             for pieza in [paso["p1"], paso["p2"]]:
@@ -107,7 +98,10 @@ class VentanaConstruccion(tk.Toplevel):
                 self.img_label.config(image=img)
                 self.img_label.image = img
 
-            self.codigo_esperado = paso["p1"]["codigo"]
+            if paso["tipo"] == "construccion":
+                self.piezas_presionadas = []
+                self.codigo_esperado = paso["p1"]["codigo"]
+                self.enviar_led(self.codigo_esperado)
 
         elif paso["tipo"] == "resultado":
             self.lbl_info.config(text=f"Pieza final: {paso['pieza']['pieza']}")
@@ -125,6 +119,9 @@ class VentanaConstruccion(tk.Toplevel):
             self.img_label.image = img
 
             self.codigo_esperado = paso["pieza"]["codigo"]
+
+            # Esperar 10 segundos para avanzar sin necesidad de interacción
+            self.after(5000, self.avanzar_paso)
 
     def avanzar_paso(self):
         self.paso_actual += 1
@@ -144,16 +141,50 @@ class VentanaConstruccion(tk.Toplevel):
                 self.escuchando = False
                 break
 
+    def enviar_led(self, codigo):
+        if self.serial.is_open:
+            self.serial.write((codigo + "\n").encode())
+
     def validar_boton(self, codigo):
         self.lbl_estado.config(text=f"Código recibido: {codigo}", fg="blue")
+        print(f"Código recibido: {codigo}")
 
-        secuencia = ["1000", "1001", "1002", "1003", "1000"]
-        if self.paso_actual < len(secuencia):
-            esperado = secuencia[self.paso_actual]
-            if codigo == esperado:
-                self.lbl_estado.config(text=f"Paso {self.paso_actual + 1} correcto", fg="green")
-                self.avanzar_paso()
+        paso_actual = self.pasos[self.paso_actual]
+
+        if paso_actual["tipo"] == "construccion":
+            if self.paso_actual == 0:
+                if len(self.piezas_presionadas) == 0 and codigo == paso_actual["p1"]["codigo"]:
+                    self.piezas_presionadas.append(codigo)
+                    self.lbl_estado.config(text=f"Pieza {codigo} registrada (1/2)", fg="green")
+                    self.enviar_led(paso_actual["p2"]["codigo"])  # Encender segundo LED
+                    self.codigo_esperado = paso_actual["p2"]["codigo"]
+
+                elif len(self.piezas_presionadas) == 1 and codigo == paso_actual["p2"]["codigo"]:
+                    self.piezas_presionadas.append(codigo)
+                    self.lbl_estado.config(text=f"Pieza {codigo} registrada (2/2)", fg="green")
+                    self.piezas_presionadas.clear()
+                    self.after(1000, self.avanzar_paso)
+
+                else:
+                    self.lbl_estado.config(text="Pieza incorrecta o duplicada", fg="red")
+                    self.enviar_led("ERR")
             else:
-                self.lbl_estado.config(text=f"Código incorrecto. Esperado: {esperado}", fg="red")
+                if codigo == self.codigo_esperado:
+                    self.lbl_estado.config(text="Pieza correcta.", fg="green")
+                    self.after(1000, self.avanzar_paso)
+                else:
+                    self.lbl_estado.config(text="Pieza incorrecta.", fg="red")
+                    self.enviar_led("ERR")  
+
+        elif paso_actual["tipo"] == "resultado":
+            if codigo == self.codigo_esperado:
+                print("Resultado correcto.")
+                self.lbl_estado.config(text="Resultado correcto.", fg="green")
+                self.after(5000, self.avanzar_paso)
+
+            else:
+                print("Resultado incorrecto.")
+                self.lbl_estado.config(text="Resultado incorrecto.", fg="red")
         else:
-            self.lbl_estado.config(text=f"Secuencia completada.", fg="green")
+            print("Resultado incorrecto.")
+            self.lbl_estado.config(text="Resultado incorrecto.", fg="red")
